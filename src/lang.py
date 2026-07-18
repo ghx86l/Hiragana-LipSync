@@ -1,0 +1,32 @@
+LANG = {
+    "ja": {
+        "name": "日本語",
+        "drop_audio": "WAV / MP3を画面内のどこにでもドロップ",
+        "settings": "設定",
+        "language": "言語",
+        "use_gpu": "GPUを使用 (beta)",
+        "generate": "VMDを生成",
+        "audio_required": "開始前にWAVまたはMP3をドロップしてください。",
+        "model_missing": "モデルファイルが見つかりません。",
+    },
+    "zh": {
+        "name": "中文",
+        "drop_audio": "将 WAV 或 MP3 拖放到窗口中的任意位置",
+        "settings": "设置",
+        "language": "语言",
+        "use_gpu": "使用 GPU (beta)",
+        "generate": "生成 VMD",
+        "audio_required": "开始前请拖放 WAV 或 MP3。",
+        "model_missing": "找不到模型文件。",
+    },
+    "en": {
+        "name": "English",
+        "drop_audio": "Drop WAV or MP3 anywhere in this window",
+        "settings": "Settings",
+        "language": "Language",
+        "use_gpu": "Use GPU (beta)",
+        "generate": "Audio to Vmd",
+        "audio_required": "Drop a WAV or MP3 file before starting.",
+        "model_missing": "Model files were not found.",
+    },
+}
