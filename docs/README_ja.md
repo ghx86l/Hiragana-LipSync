@@ -19,7 +19,7 @@ Hiragana LipSyncは、日本語音声を解析し、MMD／VRM向けのリップ�
 
 ## 動作要件
 
-Windows10/11 64bit
+Windows10/11 64bit(x64)
 
 Pythonを別途インストールする必要はありません。
 ## 起動方法
