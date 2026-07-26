@@ -21,8 +21,7 @@ Hiragana LipSync is a Windows desktop application that analyses Japanese speech 
 
 ## Requirements
 
-- Windows
-- The distributed Hiragana LipSync release
+Windows10/11 64bit(x64)
 
 Python does not need to be installed separately.
 ## Start the application
