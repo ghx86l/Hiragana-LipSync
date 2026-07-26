@@ -21,7 +21,6 @@ Hiragana LipSync 是一款 Windows 桌面应用，可分析日语语音并为 MM
 
 Windows10/11 64bit(x64)
 
-无需另行安装 Python。
 ## 启动应用
 
 双击 `HiraganaLipSync.exe`。
