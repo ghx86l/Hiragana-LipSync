@@ -92,7 +92,7 @@ An existing file with the same name is overwritten.
 | Output FPS | 10, 15, 30 | 30 |
 | Eye animation | Off / On | Off |
 
-The reset button restores these defaults. The selected interface language is stored in `src/config.json`.
+The reset button restores these defaults.
 
 ## Output compatibility
 
