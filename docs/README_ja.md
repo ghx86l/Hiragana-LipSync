@@ -20,27 +20,23 @@ Hiragana LipSyncは、日本語音声を解析し、MMD／VRM向けのリップ�
 ## 動作要件
 
 - Windows
-- 同梱のPython 3.11ランタイム、または別途用意したPython 3.11環境
-- `model/phoneme.onnx`
-- `model/phoneme_tokenizer/tokenizer.json`
+- 配布版Hiragana LipSync
 
-配布フォルダにはランタイムとモデルが含まれています。フォルダ構成を保ったまま使用してください。
-
+Pythonを別途インストールする必要はありません。
 ## 起動方法
 
-配布フォルダ内の`START.bat`をダブルクリックします。
+`HiraganaLipSync.exe`をダブルクリックします。
 
 コマンドから起動する場合：
 
 ```powershell
-.\python\python.exe .\hiragana_lipsync_main.py
+.\HiraganaLipSync.exe
 ```
 
 アプリには2つのタブがあります。
 
 - **変換** — 音声選択、アニメーション設定、モーション出力を行います。
-- **依存関係** — 同梱ランタイムで使用する処理パッケージの状態確認、インストール、アンインストールを行います。
-
+- **依存関係** — 実行ファイルが使用する処理パッケージの状態確認、インストール、アンインストールを行います。
 ## 依存関係のインストール
 
 「依存関係」タブは次の固定バージョンを管理します。
@@ -66,26 +62,7 @@ Hiragana LipSyncは、日本語音声を解析し、MMD／VRM向けのリップ�
 .\python\python.exe -m pip uninstall -y numpy scipy av onnxruntime
 ```
 
-### 別Python環境を使う代替手順
-
-GUIにはPySide6 Essentialsも必要です。同梱ランタイムを使わない場合：
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install PySide6-Essentials==6.11.1 numpy==2.2.6 scipy==1.16.3 av==16.0.1 onnxruntime==1.24.4
-.\.venv\Scripts\python.exe -c "from src.window import main; main()"
-```
-
-この直接モジュール起動コマンドは、ランチャーが同梱`python`へ自動的に切り替える動作を回避します。
-
-その環境からアプリ用依存関係をすべてアンインストールする場合：
-
-```powershell
-.\.venv\Scripts\python.exe -m pip uninstall -y PySide6-Essentials shiboken6 numpy scipy av onnxruntime
-```
-
-各コマンドが変更するのは、指定したPython環境だけです。アプリ本体、モデル、生成済みモーションは削除されません。
-
+各コマンドが変更するのは、実行ファイルが使用するランタイムだけです。アプリ本体や生成済みモーションは削除されません。
 ## 使い方
 
 1. アプリを起動します。
@@ -141,24 +118,4 @@ py -3.11 -m venv .venv
 ### 入力音声と同じ場所に出力が見つからない
 
 出力先は入力音声の隣ではなく、常に現在のユーザーの`Downloads`フォルダです。
-
-## フォルダ構成
-
-```text
-Hiragana-LipSync/
-├─ hiragana_lipsync_main.py
-├─ START.bat
-├─ icon/
-├─ img/
-├─ model/
-│  ├─ phoneme.onnx
-│  └─ phoneme_tokenizer/tokenizer.json
-├─ python/
-└─ src/
-```
-
-## クレジット
-
-- 音素モデル：[TylorShine/wavlm-base-plus-hiragana-ctc-v2](https://huggingface.co/TylorShine/wavlm-base-plus-hiragana-ctc-v2) — CC BY-SA 3.0
-- 目アニメーション参考：[「何もしない」まばたき＆呼吸モーション](https://booth.pm/ja/items/6123352) かんな@MMD
 

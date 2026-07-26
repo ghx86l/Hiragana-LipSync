@@ -20,27 +20,23 @@ Hiragana LipSync 是一款 Windows 桌面应用，可分析日语语音并为 MM
 ## 运行要求
 
 - Windows
-- 随附的 Python 3.11 运行环境，或单独准备的 Python 3.11 环境
-- `model/phoneme.onnx`
-- `model/phoneme_tokenizer/tokenizer.json`
+- Hiragana LipSync 发布版
 
-发布文件夹中包含应用运行环境和模型文件。请保持原有文件夹结构。
-
+无需另行安装 Python。
 ## 启动应用
 
-双击发布文件夹中的 `START.bat`。
+双击 `HiraganaLipSync.exe`。
 
 也可以运行：
 
 ```powershell
-.\python\python.exe .\hiragana_lipsync_main.py
+.\HiraganaLipSync.exe
 ```
 
 应用包含两个选项卡：
 
 - **转换** — 选择音频、调整动画设置并导出动作文件。
-- **依赖关系** — 检查、安装或卸载随附运行环境所用的处理软件包。
-
+- **依赖关系** — 检查、安装或卸载可执行文件使用的处理软件包。
 ## 安装依赖关系
 
 “依赖关系”选项卡管理以下固定版本：
@@ -66,26 +62,25 @@ Hiragana LipSync 是一款 Windows 桌面应用，可分析日语语音并为 MM
 .\python\python.exe -m pip uninstall -y numpy scipy av onnxruntime
 ```
 
-### 使用独立 Python 环境
+这些命令只修改可执行文件使用的运行环境，不会删除应用本体或已生成的动作文件。
 
-图形界面还需要 PySide6 Essentials。不使用随附运行环境时：
+## 通过 Gitee 手动安装／卸载
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install PySide6-Essentials==6.11.1 numpy==2.2.6 scipy==1.16.3 av==16.0.1 onnxruntime==1.24.4
-.\.venv\Scripts\python.exe -c "from src.window import main; main()"
-```
+### 手动安装
 
-该直接模块命令可避开启动器自动切换到随附 `python` 运行环境的行为。
+1. 打开本项目的 **Gitee Releases** 页面。
+2. 下载所需版本的 Windows 发布压缩包。
+3. 将压缩包解压到任意可写位置。
+4. 双击 `HiraganaLipSync.exe` 启动。
+5. 如“依赖关系”选项卡显示缺少软件包，请点击“安装”，或使用上面的替代安装命令。
 
-从该环境中卸载全部应用依赖关系：
+### 手动卸载
 
-```powershell
-.\.venv\Scripts\python.exe -m pip uninstall -y PySide6-Essentials shiboken6 numpy scipy av onnxruntime
-```
+1. 退出 Hiragana LipSync。
+2. 删除手动解压得到的发布文件夹。
+3. 如不再需要输出文件，可另行删除当前用户 `Downloads` 文件夹中的 `_lipsync.vmd` 和 `_lipsync.vrma` 文件。
 
-这些命令只修改指定的 Python 环境，不会删除应用本体、模型文件或已生成的动作文件。
-
+Hiragana LipSync 不提供系统安装程序，因此无需从 Windows“已安装的应用”中卸载。
 ## 使用方法
 
 1. 启动应用。
@@ -141,24 +136,4 @@ py -3.11 -m venv .venv
 ### 在音频文件旁找不到输出
 
 输出始终保存到当前用户的 `Downloads` 文件夹，而不是输入音频所在位置。
-
-## 项目结构
-
-```text
-Hiragana-LipSync/
-├─ hiragana_lipsync_main.py
-├─ START.bat
-├─ icon/
-├─ img/
-├─ model/
-│  ├─ phoneme.onnx
-│  └─ phoneme_tokenizer/tokenizer.json
-├─ python/
-└─ src/
-```
-
-## 致谢
-
-- 音素模型：[TylorShine/wavlm-base-plus-hiragana-ctc-v2](https://huggingface.co/TylorShine/wavlm-base-plus-hiragana-ctc-v2) — CC BY-SA 3.0
-- 眼部动画参考：[「何もしない」まばたき＆呼吸モーション](https://booth.pm/ja/items/6123352)，作者：かんな@MMD
 

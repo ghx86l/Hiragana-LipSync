@@ -20,27 +20,23 @@ Hiragana LipSync is a Windows desktop application that analyses Japanese speech 
 ## Requirements
 
 - Windows
-- The included Python 3.11 runtime, or a separate Python 3.11 environment
-- `model/phoneme.onnx`
-- `model/phoneme_tokenizer/tokenizer.json`
+- The distributed Hiragana LipSync release
 
-The distributed folder includes the application runtime and model assets. Keep the folder structure intact.
-
+Python does not need to be installed separately.
 ## Start the application
 
-From the distributed folder, double-click `START.bat`.
+Double-click `HiraganaLipSync.exe`.
 
 Alternatively, run:
 
 ```powershell
-.\python\python.exe .\hiragana_lipsync_main.py
+.\HiraganaLipSync.exe
 ```
 
 The application opens with two tabs:
 
 - **Convert** — select audio, adjust animation settings, and export a motion file.
-- **Dependencies** — inspect, install, or uninstall the processing packages used by the included runtime.
-
+- **Dependencies** — inspect, install, or uninstall the processing packages used by the executable.
 ## Dependency installation
 
 The Dependencies tab manages these exact versions:
@@ -66,26 +62,7 @@ To uninstall the same dependencies:
 .\python\python.exe -m pip uninstall -y numpy scipy av onnxruntime
 ```
 
-### Separate-environment alternative
-
-The GUI itself also requires PySide6 Essentials. To run without the included runtime:
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install PySide6-Essentials==6.11.1 numpy==2.2.6 scipy==1.16.3 av==16.0.1 onnxruntime==1.24.4
-.\.venv\Scripts\python.exe -c "from src.window import main; main()"
-```
-
-The direct module command bypasses the launcher's automatic switch to the included `python` runtime.
-
-To uninstall all application dependencies from that environment:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip uninstall -y PySide6-Essentials shiboken6 numpy scipy av onnxruntime
-```
-
-These commands modify only the selected Python environment. They do not remove the application, model files, or generated motion files.
-
+These commands modify only the runtime used by the executable. They do not remove the application or generated motion files.
 ## Usage
 
 1. Start the application.
@@ -141,24 +118,4 @@ Confirm that `model/phoneme.onnx` and `model/phoneme_tokenizer/tokenizer.json` r
 ### No output appears beside the audio file
 
 Output is always written to the current user's `Downloads` folder, not beside the input audio.
-
-## Project structure
-
-```text
-Hiragana-LipSync/
-├─ hiragana_lipsync_main.py
-├─ START.bat
-├─ icon/
-├─ img/
-├─ model/
-│  ├─ phoneme.onnx
-│  └─ phoneme_tokenizer/tokenizer.json
-├─ python/
-└─ src/
-```
-
-## Credits
-
-- Phoneme model: [TylorShine/wavlm-base-plus-hiragana-ctc-v2](https://huggingface.co/TylorShine/wavlm-base-plus-hiragana-ctc-v2) — CC BY-SA 3.0
-- Eye-animation reference: [「何もしない」まばたき＆呼吸モーション](https://booth.pm/ja/items/6123352) by かんな@MMD
 
