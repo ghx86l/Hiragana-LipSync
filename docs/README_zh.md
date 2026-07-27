@@ -4,6 +4,8 @@
 
 Hiragana LipSync 是一款 Windows 桌面应用，可分析日语语音并为 MMD／VRM 工作流程生成口型同步动画。它支持 WAV 和 MP3 音频，通过 ONNX 模型识别日语音素，再将结果转换为口型关键帧。
 
+<img src="Hiragana-LipSync_zh.png">
+
 ## 主要功能
 
 - 导出 MMD Vocaloid Motion Data（`.vmd`）和 VRM Animation（`.vrma`）
