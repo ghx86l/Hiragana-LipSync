@@ -4,6 +4,8 @@
 
 Hiragana LipSyncは、日本語音声を解析し、MMD／VRM向けのリップシンクアニメーションを生成するWindowsデスクトップアプリです。WAVまたはMP3から日本語音素をONNXモデルで検出し、口形キーフレームへ変換します。
 
+<img src="Hiragana-LipSync_ja.png">
+
 ## 主な機能
 
 - MMD Vocaloid Motion Data（`.vmd`）とVRM Animation（`.vrma`）を出力
