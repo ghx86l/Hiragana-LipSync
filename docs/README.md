@@ -4,7 +4,7 @@
 
 Hiragana LipSync is a Windows desktop application that analyses Japanese speech and generates lip-sync animation files for MMD and VRM workflows. It accepts WAV or MP3 audio, detects Japanese phonemes with an ONNX model, and converts them into mouth-shape keyframes.
 
-<img src="IMG_20260727_041004.png">
+<img src="Hiragana-LipSync_en.png">
 
 ## Features
 
