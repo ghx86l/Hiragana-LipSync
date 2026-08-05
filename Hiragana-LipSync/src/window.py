@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QPoint, QSize, QThread, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QPushButton,
     QProgressBar,
@@ -23,11 +24,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .const import DEFAULTS, MORPHS, SUPPORTED_AUDIO, output_path
+from .const import DEFAULT_DIRECTORY, DEFAULTS, MORPHS, SUPPORTED_AUDIO, output_path
 from .design import APP_STYLE
 from .lang import LANG
 from .setup import SetupPanel
 from .worker import Worker
+
+
+def tinted_icon(path, color, size):
+    pixmap = QIcon(str(path)).pixmap(size)
+    painter = QPainter(pixmap)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    painter.fillRect(pixmap.rect(), QColor(color))
+    painter.end()
+    return QIcon(pixmap)
 
 
 def file_size(path):
@@ -46,21 +56,33 @@ CREDIT_HTML = (
 )
 
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+def config_path(root):
+    return Path(root) / "config" / "config.json"
 
 
-def load_language():
+def load_config(root):
     try:
-        code = json.loads(CONFIG_PATH.read_text(encoding="utf-8")).get("language")
-    except (OSError, json.JSONDecodeError, AttributeError):
-        return "ja"
-    return code if code in LANG else "ja"
+        data = json.loads(config_path(root).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    code = data.get("language")
+    directory = data.get("directory")
+    name = data.get("name")
+    return {
+        "language": code if code in LANG else "ja",
+        "directory": directory if isinstance(directory, str) and directory.strip() else str(DEFAULT_DIRECTORY),
+        "name": name if isinstance(name, str) else "",
+    }
 
 
-def save_language(code):
+def save_config(root, data):
     try:
-        CONFIG_PATH.write_text(
-            json.dumps({"language": code}, ensure_ascii=False, indent=2) + "\n",
+        path = config_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
     except OSError:
@@ -80,9 +102,9 @@ class SquarePopupComboBox(QComboBox):
         popup = QFrame(host)
         popup.setObjectName("squarePopup")
         popup_layout = QVBoxLayout(popup)
-        popup_layout.setContentsMargins(1, 1, 1, 1)
+        popup_layout.setContentsMargins(0, 0, 0, 0)
         popup_layout.setSpacing(0)
-        row_height = 32
+        row_height = self.height()
         for index in range(self.count()):
             item = QPushButton(self.itemText(index), popup)
             item.setObjectName("squarePopupItem")
@@ -152,16 +174,15 @@ class Window(QMainWindow):
         self.audio_path = None
         self.thread = None
         self.worker = None
-        self.language_code = load_language()
         self.status_key = "idle"
         self.status_text = ""
         if "__compiled__" in globals():
             self.root_dir = Path(sys.argv[0]).resolve().parent
-        elif getattr(sys, "frozen", False):
-            self.root_dir = Path(sys._MEIPASS)
         else:
             self.root_dir = Path(__file__).resolve().parent.parent
         self.model_dir = self.root_dir / "model"
+        self.config = load_config(self.root_dir)
+        self.language_code = self.config["language"]
 
         icon_path = self.root_dir / "icon" / "hiragana_lipsync.ico"
         if icon_path.is_file():
@@ -177,8 +198,10 @@ class Window(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setObjectName("tabs")
         self.convert_page = QWidget()
+        self.output_page = QWidget()
         self.setup_page = SetupPanel(self.root_dir, self.language_code)
         self.tabs.addTab(self.convert_page, "")
+        self.tabs.addTab(self.output_page, "")
         self.tabs.addTab(self.setup_page, "")
         layout = QVBoxLayout(self.convert_page)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -205,6 +228,7 @@ class Window(QMainWindow):
         self.drop_area = QFrame()
         self.drop_area.setObjectName("dropArea")
         self.drop_area.setProperty("dragActive", False)
+        self.drop_area.setProperty("hovered", False)
         self.drop_area.setCursor(Qt.CursorShape.PointingHandCursor)
         drop_layout = QVBoxLayout(self.drop_area)
         drop_layout.setContentsMargins(5, 0, 5, 0)
@@ -261,9 +285,15 @@ class Window(QMainWindow):
         self.reset_button.setObjectName("reset")
         self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_icon = self.root_dir / "img" / "reset_settings.svg"
+        self.reset_icons = None
         if reset_icon.is_file():
-            self.reset_button.setIcon(QIcon(str(reset_icon)))
-            self.reset_button.setIconSize(QSize(18, 18))
+            icon_size = QSize(18, 18)
+            self.reset_icons = (
+                tinted_icon(reset_icon, "#B3B3B3", icon_size),
+                tinted_icon(reset_icon, "#FFFFFF", icon_size),
+            )
+            self.reset_button.setIcon(self.reset_icons[0])
+            self.reset_button.setIconSize(icon_size)
         else:
             self.reset_button.setText("\u21ba")
         self.reset_button.clicked.connect(self.apply_defaults)
@@ -278,7 +308,7 @@ class Window(QMainWindow):
         self.mouth_sliders = []
         for _ in MORPHS:
             item = QVBoxLayout()
-            item.setSpacing(3)
+            item.setSpacing(8)
             name = QLabel()
             name.setObjectName("mouthName")
             name.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -298,39 +328,8 @@ class Window(QMainWindow):
             self.mouth_sliders.append((name, slider, value))
         panel.addLayout(mouth_row)
 
-        lead_row = QHBoxLayout()
-        lead_row.setSpacing(3)
-        self.lead_label = QLabel()
-        self.lead_label.setObjectName("rowLabel")
-        self.lead_label.setMinimumWidth(185)
-        self.lead_slider = QSlider(Qt.Orientation.Horizontal)
-        self.lead_slider.setRange(-30, 30)
-        self.lead_value = QLabel()
-        self.lead_value.setObjectName("rowValue")
-        self.lead_value.setMinimumWidth(30)
-        self.lead_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.lead_slider.valueChanged.connect(lambda v: self.lead_value.setText(str(v)))
-        lead_row.addWidget(self.lead_label)
-        lead_row.addWidget(self.lead_slider, 1)
-        lead_row.addWidget(self.lead_value)
-        panel.addLayout(lead_row)
-
-        shapes_row = QHBoxLayout()
-        shapes_row.setSpacing(3)
-        self.shapes_label = QLabel()
-        self.shapes_label.setObjectName("rowLabel")
-        self.shapes_label.setMinimumWidth(185)
-        self.shapes_slider = QSlider(Qt.Orientation.Horizontal)
-        self.shapes_slider.setRange(1, 6)
-        self.shapes_value = QLabel()
-        self.shapes_value.setObjectName("rowValue")
-        self.shapes_value.setMinimumWidth(30)
-        self.shapes_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.shapes_slider.valueChanged.connect(lambda v: self.shapes_value.setText(str(v)))
-        shapes_row.addWidget(self.shapes_label)
-        shapes_row.addWidget(self.shapes_slider, 1)
-        shapes_row.addWidget(self.shapes_value)
-        panel.addLayout(shapes_row)
+        self.lead_label, self.lead_slider, self.lead_value = self.build_slider_row(panel, -30, 30)
+        self.shapes_label, self.shapes_slider, self.shapes_value = self.build_slider_row(panel, 1, 6)
 
         interval_row = QHBoxLayout()
         interval_row.setSpacing(3)
@@ -365,14 +364,95 @@ class Window(QMainWindow):
         self.credit.setWordWrap(True)
         layout.addWidget(self.credit)
 
+        self.build_output_page()
         self.apply_style()
         self.drop_widgets = (self.drop_area, self.drop_title, self.drop_path)
         self.install_drop_filter()
         self.apply_defaults()
         self.apply_language()
 
+    def build_slider_row(self, panel, minimum, maximum):
+        row = QHBoxLayout()
+        row.setSpacing(3)
+        label = QLabel()
+        label.setObjectName("rowLabel")
+        label.setMinimumWidth(185)
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(minimum, maximum)
+        value = QLabel()
+        value.setObjectName("rowValue")
+        value.setMinimumWidth(30)
+        value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        slider.valueChanged.connect(lambda current: value.setText(str(current)))
+        row.addWidget(label)
+        row.addWidget(slider, 1)
+        row.addWidget(value)
+        panel.addLayout(row)
+        return label, slider, value
+
+    def build_output_page(self):
+        layout = QVBoxLayout(self.output_page)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(3)
+
+        self.output_panel = QFrame()
+        self.output_panel.setObjectName("settingsPanel")
+        panel = QVBoxLayout(self.output_panel)
+        panel.setContentsMargins(5, 5, 5, 5)
+        panel.setSpacing(10)
+
+        self.output_title = QLabel()
+        self.output_title.setObjectName("settingsTitle")
+        panel.addWidget(self.output_title)
+
+        self.directory_label = QLabel()
+        self.directory_label.setObjectName("rowLabel")
+        panel.addWidget(self.directory_label)
+        directory_row = QHBoxLayout()
+        directory_row.setSpacing(3)
+        self.directory_edit = QLineEdit(self.config["directory"])
+        self.directory_edit.setObjectName("path")
+        self.directory_edit.setReadOnly(True)
+        self.browse_button = QPushButton()
+        self.browse_button.setObjectName("browse")
+        self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.browse_button.clicked.connect(self.pick_directory)
+        directory_row.addWidget(self.directory_edit, 1)
+        directory_row.addWidget(self.browse_button)
+        panel.addLayout(directory_row)
+
+        self.name_label = QLabel()
+        self.name_label.setObjectName("rowLabel")
+        panel.addWidget(self.name_label)
+        self.name_edit = QLineEdit(self.config["name"])
+        self.name_edit.setObjectName("field")
+        self.name_edit.editingFinished.connect(self.store_config)
+        panel.addWidget(self.name_edit)
+        self.name_hint = QLabel()
+        self.name_hint.setObjectName("rowHint")
+        panel.addWidget(self.name_hint)
+
+        layout.addWidget(self.output_panel)
+        layout.addStretch()
+
+    def store_config(self):
+        self.config = {
+            "language": self.language_code,
+            "directory": self.directory_edit.text().strip(),
+            "name": self.name_edit.text().strip(),
+        }
+        save_config(self.root_dir, self.config)
+
+    def pick_directory(self):
+        selected = QFileDialog.getExistingDirectory(self, "", self.directory_edit.text())
+        if selected:
+            self.directory_edit.setText(str(Path(selected)))
+            self.store_config()
+
     def install_drop_filter(self):
         for widget in self.findChildren(QWidget):
+            if isinstance(widget, QLineEdit):
+                continue
             widget.setAcceptDrops(True)
             widget.installEventFilter(self)
 
@@ -392,7 +472,7 @@ class Window(QMainWindow):
         if not code:
             return
         self.language_code = code
-        save_language(code)
+        self.store_config()
         self.apply_language()
 
     def apply_language(self):
@@ -404,11 +484,17 @@ class Window(QMainWindow):
         self.shapes_label.setText(self.text("shapes"))
         self.interval_label.setText(self.text("interval"))
         self.eye_label.setText(self.text("eye"))
+        self.output_title.setText(self.text("output"))
+        self.directory_label.setText(self.text("output_dir"))
+        self.name_label.setText(self.text("output_name"))
+        self.name_hint.setText(self.text("output_hint"))
+        self.browse_button.setText(self.text("browse"))
         names = self.text("vowel_names")
         for index, (name, _, _) in enumerate(self.mouth_sliders):
             name.setText(names[index])
         self.tabs.setTabText(0, self.text("tab_convert"))
-        self.tabs.setTabText(1, self.text("tab_setup"))
+        self.tabs.setTabText(1, self.text("tab_output"))
+        self.tabs.setTabText(2, self.text("tab_setup"))
         self.setup_page.apply_language(self.language_code)
         if self.status_key:
             self.status.setText(self.text(self.status_key))
@@ -455,6 +541,14 @@ class Window(QMainWindow):
         elif event.type() == QEvent.Type.Drop:
             if self.drop_audio(event):
                 return True
+        elif event.type() in (QEvent.Type.Enter, QEvent.Type.Leave) and watched in self.drop_widgets:
+            self.set_drop_hover(self.drop_area.underMouse())
+        elif (
+            event.type() in (QEvent.Type.Enter, QEvent.Type.Leave)
+            and self.reset_icons is not None
+            and watched is self.reset_button
+        ):
+            self.reset_button.setIcon(self.reset_icons[event.type() == QEvent.Type.Enter])
         elif event.type() == QEvent.Type.MouseButtonRelease and watched in self.drop_widgets:
             self.pick_audio()
             return True
@@ -502,6 +596,13 @@ class Window(QMainWindow):
         self.drop_area.style().unpolish(self.drop_area)
         self.drop_area.style().polish(self.drop_area)
 
+    def set_drop_hover(self, hovered):
+        if self.drop_area.property("hovered") == hovered:
+            return
+        self.drop_area.setProperty("hovered", hovered)
+        self.drop_area.style().unpolish(self.drop_area)
+        self.drop_area.style().polish(self.drop_area)
+
     def set_audio(self, path):
         self.audio_path = path
         self.drop_title.setText(path.name)
@@ -518,13 +619,21 @@ class Window(QMainWindow):
         if not (self.model_dir / "phoneme.onnx").is_file():
             self.set_status("model_missing")
             return
-        output = output_path(f"{self.audio_path.stem}_lipsync", suffix)
+        output = output_path(
+            self.directory_edit.text(),
+            self.name_edit.text(),
+            f"{self.audio_path.stem}_lipsync",
+            suffix,
+        )
+        try:
+            output.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            self.set_status_text(str(error))
+            return
         self.progress.setValue(0)
         self.run_button.setEnabled(False)
         self.run_vrma_button.setEnabled(False)
-        self.status_key = ""
-        self.status_text = ""
-        self.status.clear()
+        self.set_status("converting")
         self.thread = QThread(self)
         self.worker = Worker(
             str(self.audio_path),

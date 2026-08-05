@@ -1,7 +1,10 @@
+import importlib
 import os
 import re
 import subprocess
 import sys
+import urllib.request
+import zipfile
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRect, QThread, QTimer, Signal, Slot
@@ -29,6 +32,9 @@ PACKAGES = (
     ("onnxruntime", "1.24.4"),
 )
 RUNTIME_NAME = "python"
+PYTHON_URL = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
+PTH_LINES = ("python311.zip", ".", "Lib\\site-packages", "", "import site")
 
 
 def runtime_python(root):
@@ -62,9 +68,8 @@ class EnvWorker(QObject):
     line = Signal(str)
     complete = Signal(bool)
 
-    def __init__(self, mode, root, packages):
+    def __init__(self, root, packages):
         super().__init__()
-        self.mode = mode
         self.root = Path(root)
         self.packages = packages
 
@@ -90,22 +95,42 @@ class EnvWorker(QObject):
         process.stdout.close()
         return process.wait() == 0
 
+    def download(self, url, path):
+        self.line.emit(f"Downloading {url}")
+        with urllib.request.urlopen(url) as source, path.open("wb") as target:
+            target.write(source.read())
+        self.line.emit(f"Saved {path.name}")
+
+    def bootstrap(self):
+        if runtime_python(self.root).is_file():
+            return True
+        target = self.root / RUNTIME_NAME
+        archive = self.root / "py.zip"
+        script = self.root / "gp.py"
+        try:
+            self.download(PYTHON_URL, archive)
+            self.line.emit(f"Extracting to {target}")
+            with zipfile.ZipFile(archive) as source:
+                source.extractall(target)
+            (target / "python311._pth").write_text("\n".join(PTH_LINES) + "\n", encoding="ascii")
+            self.download(GET_PIP_URL, script)
+            return self.stream([runtime_python(self.root), script, "--no-warn-script-location"])
+        finally:
+            archive.unlink(missing_ok=True)
+            script.unlink(missing_ok=True)
+
     def install(self):
+        if not self.bootstrap():
+            return False
         target = runtime_python(self.root)
         command = [target, "-m", "pip", "install", "--no-warn-script-location"]
         command += [f"{package}=={version}" for package, version in self.packages]
         return self.stream(command)
 
-    def uninstall(self):
-        target = runtime_python(self.root)
-        command = [target, "-m", "pip", "uninstall", "-y"]
-        command += [package for package, _ in self.packages]
-        return self.stream(command)
-
     @Slot()
     def run(self):
         try:
-            result = self.install() if self.mode == "install" else self.uninstall()
+            result = self.install()
         except Exception as error:
             self.line.emit(str(error))
             result = False
@@ -150,7 +175,7 @@ class Spinner(QWidget):
 
 
 class EnvSection(QFrame):
-    requested = Signal(str)
+    requested = Signal()
 
     def __init__(self, root_dir, packages):
         super().__init__()
@@ -181,12 +206,8 @@ class EnvSection(QFrame):
         buttons.setSpacing(3)
         self.install_button = QPushButton()
         self.install_button.setObjectName("envSecondary")
-        self.install_button.clicked.connect(lambda: self.requested.emit("install"))
-        self.uninstall_button = QPushButton()
-        self.uninstall_button.setObjectName("envSecondary")
-        self.uninstall_button.clicked.connect(lambda: self.requested.emit("uninstall"))
+        self.install_button.clicked.connect(self.requested.emit)
         buttons.addWidget(self.install_button)
-        buttons.addWidget(self.uninstall_button)
         buttons.addStretch()
         panel.addLayout(buttons)
         self.build_rows()
@@ -226,14 +247,12 @@ class EnvSection(QFrame):
             state.style().unpolish(state)
             state.style().polish(state)
         self.install_button.setEnabled(not busy and not ready)
-        self.uninstall_button.setEnabled(not busy and ready)
 
     def apply_language(self, code):
         self.language_code = code
         for index, key in enumerate(("col_package", "col_version", "col_state")):
             self.heads[index].setText(self.text(key))
         self.install_button.setText(self.text("install"))
-        self.uninstall_button.setText(self.text("uninstall"))
 
 
 class SetupPanel(QWidget):
@@ -269,19 +288,16 @@ class SetupPanel(QWidget):
     def refresh(self):
         self.section.refresh(self.busy)
 
-    def start(self, mode):
+    def start(self):
         if self.busy:
-            return
-        if not runtime_python(self.root_dir).is_file():
-            self.append("python\\python.exe was not found.")
             return
         self.log.clear()
         self.busy = True
         self.spinner.start()
-        self.append("Installing packages." if mode == "install" else "Uninstalling packages.")
+        self.append("Setting up the runtime.")
         self.refresh()
         self.thread = QThread(self)
-        self.worker = EnvWorker(mode, self.root_dir, PACKAGES)
+        self.worker = EnvWorker(self.root_dir, PACKAGES)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.line.connect(self.append)
@@ -302,6 +318,8 @@ class SetupPanel(QWidget):
     def finish(self, success):
         self.busy = False
         self.spinner.stop()
+        if success:
+            importlib.invalidate_caches()
         self.append("Finished." if success else "Failed.")
         self.refresh()
 

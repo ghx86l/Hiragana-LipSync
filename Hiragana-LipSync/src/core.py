@@ -112,7 +112,7 @@ def read_wav(path):
     elif width == 4:
         audio = np.frombuffer(raw, dtype="<i4").astype(np.float32) / 2147483648.0
     else:
-        raise ValueError(f"未対応のWAVビット深度です: {width * 8}")
+        raise ValueError(f"Unsupported WAV bit depth: {width * 8}")
 
     if channels > 1:
         audio = audio.reshape(-1, channels).mean(axis=1)
@@ -123,12 +123,12 @@ def read_mp3(path):
     try:
         import av
     except ImportError as error:
-        raise RuntimeError("MP3の読み込みにはPyAVが必要です。") from error
+        raise RuntimeError("PyAV is required to read MP3 files.") from error
 
     samples = []
     with av.open(str(path)) as container:
         if not container.streams.audio:
-            raise ValueError("音声ストリームが見つかりません。")
+            raise ValueError("No audio stream was found.")
         resampler = av.audio.resampler.AudioResampler(format="fltp", layout="mono", rate=RATE)
         for frame in container.decode(container.streams.audio[0]):
             for converted in resampler.resample(frame):
@@ -136,7 +136,7 @@ def read_mp3(path):
         for converted in resampler.resample(None):
             samples.append(converted.to_ndarray().reshape(-1))
     if not samples:
-        raise ValueError("MP3から音声を読み込めませんでした。")
+        raise ValueError("Could not read audio from the MP3 file.")
     return np.concatenate(samples).astype(np.float32, copy=False)
 
 
@@ -154,7 +154,7 @@ def read_audio(path):
         return read_wav(path)
     if extension == ".mp3":
         return read_mp3(path)
-    raise ValueError("WAVまたはMP3を指定してください。")
+    raise ValueError("Specify a WAV or MP3 file.")
 
 
 def rms_frames(audio, frame_count):
@@ -211,7 +211,7 @@ def infer_probabilities(audio, model_dir, progress, status):
 
     graph = model_dir / "phoneme.onnx"
     if not graph.is_file():
-        raise FileNotFoundError("model/phoneme.onnx が見つかりません。")
+        raise FileNotFoundError("model/phoneme.onnx was not found.")
     report("Loading phoneme model on CPU.", status)
     options = onnxruntime.SessionOptions()
     options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -240,7 +240,7 @@ def infer_probabilities(audio, model_dir, progress, status):
             if token_id != blank_id and token_id < logits.shape[-1]
         ]
         if not phone_ids:
-            raise RuntimeError("モデル出力に既知の音素IDがありません。")
+            raise RuntimeError("No known phoneme id in the model output.")
         reduced = smooth(logits[:, phone_ids])
         probabilities = softmax(reduced)
         local_times = np.arange(len(probabilities), dtype=np.float32) * (
@@ -256,7 +256,7 @@ def infer_probabilities(audio, model_dir, progress, status):
             break
 
     if not batches:
-        raise ValueError("音声が短すぎます。")
+        raise ValueError("The audio is too short.")
     times = np.concatenate([item[0] for item in batches])
     probabilities = np.concatenate([item[1] for item in batches])
     del session
